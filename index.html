@@ -1,0 +1,1924 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grupo Técnico Soluciones - Tienda (Firebase)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .nav-link.active {
+            font-weight: 600;
+            color: #3b82f6;
+            border-bottom: 2px solid #3b82f6;
+        }
+
+        .nav-link {
+            transition: color 0.3s ease, border-bottom-color 0.3s ease;
+        }
+
+        .page-section {
+            display: none;
+        }
+
+        .page-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        /* Ocultos por defecto, se muestran con JS */
+        .admin-only,
+        .admin-appointments-view,
+        .admin-product-controls,
+        #user-greeting-nav,
+        #mobile-user-greeting-nav {
+            display: none;
+        }
+
+        /* Se muestra por defecto, se oculta con JS si está logueado */
+        #nav-login,
+        #mobile-nav-login {
+            display: inline-block;
+        }
+
+        /* o block/flex según layout */
+
+        .rating-stars span {
+            cursor: pointer;
+            color: #d1d5db;
+            font-size: 1.5rem;
+        }
+
+        .rating-stars span.selected,
+        .rating-stars span:hover,
+        .rating-stars span:hover~span {
+            color: #f59e0b;
+        }
+
+        #user-greeting-nav,
+        #mobile-user-greeting-nav {
+            align-items: center;
+        }
+
+        .appointment-card {
+            border-left-width: 4px;
+        }
+
+        .status-pendiente {
+            border-left-color: #f59e0b;
+        }
+
+        .status-confirmada {
+            border-left-color: #10b981;
+        }
+
+        .status-completada {
+            border-left-color: #6b7280;
+        }
+
+        .status-cancelada {
+            border-left-color: #ef4444;
+        }
+
+        .product-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .product-image {
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+        }
+
+        .product-description {
+            height: 4.5rem;
+            overflow-y: auto;
+            line-height: 1.5rem;
+        }
+
+        #filterSidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .product-description::-webkit-scrollbar {
+            display: none;
+        }
+
+        .product-description {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Estilo para indicar carga */
+        .loading-placeholder::after {
+            content: 'Cargando...';
+            display: block;
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+        }
+
+        /* Ocultar elementos hasta que Firebase Auth esté listo */
+        .auth-loading {
+            display: none !important;
+        }
+
+        body.auth-ready .auth-loading {
+            display: flex !important;
+        }
+
+        /* O block/inline-block según necesites */
+        body.auth-ready .auth-hidden-until-ready {
+            display: block !important;
+        }
+
+        /* O flex etc. */
+        .auth-hidden-until-ready {
+            display: none;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800">
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-blue-600" onclick="showSection('inicio', this)">Grupo Técnico
+                Soluciones</a>
+            <div class="hidden md:flex items-center space-x-4">
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm hover:text-blue-500 active"
+                    onclick="showSection('inicio', this)">Inicio</a>
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm hover:text-blue-500"
+                    onclick="showSection('servicios', this)">Servicios</a>
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm hover:text-blue-500"
+                    onclick="showSection('tienda', this)">Tienda</a>
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm hover:text-blue-500"
+                    onclick="showSection('noticias', this)">Noticias</a>
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm hover:text-blue-500"
+                    onclick="showSection('citas', this)">Agendar Cita</a>
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm hover:text-blue-500"
+                    onclick="showSection('opiniones', this)">Opiniones</a>
+                <a href="#" class="nav-link px-3 py-2 rounded-md text-sm hover:text-blue-500"
+                    onclick="showSection('contacto', this)">Contacto</a>
+                <a href="#" id="nav-manage-appointments"
+                    class="admin-only nav-link px-3 py-2 rounded-md text-sm hover:text-blue-500"
+                    onclick="showSection('adminAppointments', this)">Gestionar Citas</a>
+                <div id="user-greeting-nav" class="text-sm auth-loading">
+                    <span id="user-name-display" class="text-gray-700 mr-2"></span>
+                    <button id="nav-logout" class="text-blue-500 hover:text-blue-700 font-medium">(Salir)</button>
+                </div>
+                <button id="nav-login" class="nav-link px-3 py-2 rounded-md text-sm hover:text-blue-500 auth-loading"
+                    onclick="showSection('login', this)">Acceder</button>
+            </div>
+            <div class="md:hidden flex items-center">
+                <div id="mobile-user-greeting-nav" class="text-sm mr-2 auth-loading">
+                    <span id="mobile-user-name-display" class="text-gray-700"></span>
+                    <button id="mobile-nav-logout"
+                        class="ml-1 text-blue-500 hover:text-blue-700 font-medium">(Salir)</button>
+                </div>
+                <button id="mobile-nav-login" class="nav-link px-2 py-1 text-sm hover:text-blue-500 auth-loading"
+                    onclick="showSection('login', this); toggleMobileMenu();">Acceder</button>
+                <button id="mobile-menu-button" class="text-gray-700 focus:outline-none ml-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16m-7 6h7"></path>
+                    </svg>
+                </button>
+            </div>
+        </nav>
+        <div id="mobile-menu" class="md:hidden hidden bg-white shadow-lg">
+            <a href="#" class="block nav-link px-4 py-2 text-sm hover:bg-gray-200 active"
+                onclick="showSection('inicio', this); toggleMobileMenu();">Inicio</a>
+            <a href="#" class="block nav-link px-4 py-2 text-sm hover:bg-gray-200"
+                onclick="showSection('servicios', this); toggleMobileMenu();">Servicios</a>
+            <a href="#" class="block nav-link px-4 py-2 text-sm hover:bg-gray-200"
+                onclick="showSection('tienda', this); toggleMobileMenu();">Tienda</a>
+            <a href="#" class="block nav-link px-4 py-2 text-sm hover:bg-gray-200"
+                onclick="showSection('noticias', this); toggleMobileMenu();">Noticias</a>
+            <a href="#" class="block nav-link px-4 py-2 text-sm hover:bg-gray-200"
+                onclick="showSection('citas', this); toggleMobileMenu();">Agendar Cita</a>
+            <a href="#" class="block nav-link px-4 py-2 text-sm hover:bg-gray-200"
+                onclick="showSection('opiniones', this); toggleMobileMenu();">Opiniones</a>
+            <a href="#" class="block nav-link px-4 py-2 text-sm hover:bg-gray-200"
+                onclick="showSection('contacto', this); toggleMobileMenu();">Contacto</a>
+            <a href="#" id="mobile-nav-manage-appointments"
+                class="admin-only block nav-link px-4 py-2 text-sm hover:bg-gray-200"
+                onclick="showSection('adminAppointments', this); toggleMobileMenu();">Gestionar Citas</a>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-6">
+        <section id="inicio" class="page-section active fade-in min-h-[calc(100vh-200px)]"></section>
+        <section id="servicios" class="page-section fade-in min-h-[calc(100vh-200px)]"></section>
+        <section id="tienda" class="page-section fade-in min-h-[calc(100vh-200px)]"></section>
+        <section id="noticias" class="page-section fade-in min-h-[calc(100vh-200px)]"></section>
+        <section id="citas" class="page-section fade-in min-h-[calc(100vh-200px)]"></section>
+        <section id="opiniones" class="page-section fade-in min-h-[calc(100vh-200px)]"></section>
+        <section id="contacto" class="page-section fade-in min-h-[calc(100vh-200px)]"></section>
+        <section id="login" class="page-section fade-in min-h-[calc(100vh-200px)]"></section>
+        <section id="adminAppointments" class="page-section fade-in admin-appointments-view min-h-[calc(100vh-200px)]">
+        </section>
+
+        <div id="serviceModal"
+            class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 hidden">
+            <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+                <h3 id="serviceModalTitle" class="text-2xl font-bold mb-4">Agregar Nuevo Servicio</h3>
+                <form id="serviceForm">
+                    <input type="hidden" id="serviceId">
+                    <div>
+                        <label for="serviceNameModal" class="block text-sm font-medium text-gray-700">Nombre</label>
+                        <input type="text" id="serviceNameModal" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="mt-4">
+                        <label for="serviceDescriptionModal"
+                            class="block text-sm font-medium text-gray-700">Descripción</label>
+                        <textarea id="serviceDescriptionModal" rows="3" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                    <div class="mt-4">
+                        <label for="serviceImageModal" class="block text-sm font-medium text-gray-700">URL de
+                            Imagen</label>
+                        <input type="url" id="serviceImageModal"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="https://placehold.co/600x400">
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" onclick="closeServiceModal()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="newsModal"
+            class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 hidden">
+            <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+                <h3 id="newsModalTitle" class="text-2xl font-bold mb-4">Agregar Noticia</h3>
+                <form id="newsForm">
+                    <input type="hidden" id="newsIdModal">
+                    <div>
+                        <label for="newsTitleModal" class="block text-sm font-medium text-gray-700">Título</label>
+                        <input type="text" id="newsTitleModal" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="mt-4">
+                        <label for="newsContentModal" class="block text-sm font-medium text-gray-700">Contenido</label>
+                        <textarea id="newsContentModal" rows="5" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                    <div class="mt-4">
+                        <label for="newsImageModal" class="block text-sm font-medium text-gray-700">URL de
+                            Imagen</label>
+                        <input type="url" id="newsImageModal"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="https://placehold.co/800x400">
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" onclick="closeNewsModal()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="productModal"
+            class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50 hidden">
+            <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg">
+                <h3 id="productModalTitle" class="text-2xl font-bold mb-4">Agregar Nuevo Producto</h3>
+                <form id="productForm">
+                    <input type="hidden" id="productIdModal">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="productNameModal" class="block text-sm font-medium text-gray-700">Nombre del
+                                Producto</label>
+                            <input type="text" id="productNameModal" required
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="productCategoryModal"
+                                class="block text-sm font-medium text-gray-700">Tipo/Categoría</label>
+                            <select id="productCategoryModal" required
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Seleccione tipo</option>
+                                <option value="Split">Split</option>
+                                <option value="Ventana">Ventana</option>
+                                <option value="Portátil">Portátil</option>
+                                <option value="Central">Central</option>
+                                <option value="Repuesto">Repuesto</option>
+                                <option value="Herramienta">Herramienta</option>
+                                <option value="Accesorio">Accesorio</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="productConditionModal"
+                                class="block text-sm font-medium text-gray-700">Condición</label>
+                            <select id="productConditionModal" required
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="Nuevo">Nuevo</option>
+                                <option value="Usado">Usado</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="productPriceModal" class="block text-sm font-medium text-gray-700">Precio
+                                (RD$)</label>
+                            <input type="number" id="productPriceModal" step="0.01" min="0" required
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="productBtuModal" class="block text-sm font-medium text-gray-700">BTU
+                                (Opcional)</label>
+                            <input type="number" id="productBtuModal" min="0"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Ej: 12000">
+                        </div>
+                        <div>
+                            <label for="productBrandModal" class="block text-sm font-medium text-gray-700">Marca
+                                (Opcional)</label>
+                            <input type="text" id="productBrandModal"
+                                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Ej: LG, Samsung">
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label for="productDescriptionModal"
+                            class="block text-sm font-medium text-gray-700">Descripción</label>
+                        <textarea id="productDescriptionModal" rows="3" required
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                    <div class="mt-4">
+                        <label for="productImageModal" class="block text-sm font-medium text-gray-700">URL de Imagen del
+                            Producto</label>
+                        <input type="url" id="productImageModal"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="https://placehold.co/400x400">
+                    </div>
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" onclick="closeProductModal()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                        <button type="submit"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg">Guardar
+                            Producto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white text-center p-6 mt-12">
+        <div class="container mx-auto">
+            <p class="mb-2">&copy; <span id="currentYearFooter"></span> Grupo Técnico Soluciones. Todos los derechos
+                reservados.</p>
+            <div class="flex justify-center space-x-4 mb-2">
+                <a href="https://www.instagram.com/grupo_tecnico_soluciones/" target="_blank" aria-label="Instagram"
+                    class="text-gray-400 hover:text-white transition-colors duration-300"><i
+                        class="fab fa-instagram fa-lg"></i></a>
+                <a href="https://www.facebook.com/profile.php?id=61574455208726" target="_blank" aria-label="Facebook"
+                    class="text-gray-400 hover:text-white transition-colors duration-300"><i
+                        class="fab fa-facebook fa-lg"></i></a>
+                <a href="https://wa.me/18295764243" target="_blank" aria-label="WhatsApp"
+                    class="text-gray-400 hover:text-white transition-colors duration-300"><i
+                        class="fab fa-whatsapp fa-lg"></i></a>
+            </div>
+            <p class="text-sm text-gray-500">Diseñado con ❤️ en República Dominicana</p>
+        </div>
+    </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script>
+        // ========================================================================
+        // == CONFIGURACIÓN DE FIREBASE - ¡¡¡REEMPLAZAR CON TUS VALORES!!! ==
+        // ========================================================================
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_teSLJGiUYY8EPIaHN6lWNMF0vZ-Cjrw",
+            authDomain: "grupo-tecnico-soluciones-34147.firebaseapp.com",
+            projectId: "grupo-tecnico-soluciones-34147",
+            storageBucket: "grupo-tecnico-soluciones-34147.firebasestorage.app",
+            messagingSenderId: "203602914299",
+            appId: "1:203602914299:web:4722d5362537945d9ff95e",
+            measurementId: "G-SJN5YC7085"
+        };
+        // == EMAIL DEL ADMINISTRADOR ==
+        const ADMIN_EMAIL_DEFINED = "grupotecnicosoluciones@gmail.com"; // Cambia esto si tu email de admin es diferente
+
+        // ========================================================================
+        // == INICIALIZACIÓN DE FIREBASE ==
+        // ========================================================================
+        let app, auth, db; // Declarar variables globales para Firebase
+        try {
+            if (!firebase.apps.length) {
+                app = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
+                console.log("Firebase inicializado correctamente.");
+                // Indicar que Auth está listo para mostrar/ocultar elementos
+                document.body.classList.add('auth-ready');
+            } else {
+                app = firebase.app(); // Obtener la app ya inicializada
+                auth = firebase.auth();
+                db = firebase.firestore();
+                document.body.classList.add('auth-ready');
+            }
+        } catch (error) {
+            console.error("Error inicializando Firebase:", error);
+            alert("Error al conectar con la base de datos. Por favor, revisa la configuración de Firebase en el código.");
+            // Ocultar todo o mostrar un mensaje de error más prominente
+            document.body.innerHTML = '<div class="text-center p-10 text-red-600">Error crítico: No se pudo inicializar Firebase. Verifica la configuración.</div>';
+        }
+
+
+        // ========================================================================
+        // == ESTADO GLOBAL Y VARIABLES ==
+        // ========================================================================
+        let currentUserIsAdmin = false;
+        let currentFilters = { condition: 'todos', category: [] };
+        let currentRating = 0; // Para el formulario de opiniones
+        let allProducts = []; // Caché local de productos para filtrar
+
+        // ========================================================================
+        // == LÓGICA DE NAVEGACIÓN SPA ==
+        // ========================================================================
+        function showSection(sectionId, navElement) {
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active', 'fade-in');
+            });
+            const activeSection = document.getElementById(sectionId);
+            if (activeSection) {
+                activeSection.classList.add('active');
+                void activeSection.offsetWidth;
+                activeSection.classList.add('fade-in');
+                // Cargar contenido específico de la sección si es necesario
+                loadSectionContent(sectionId);
+            }
+
+            document.querySelectorAll('header .nav-link, #mobile-menu .nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            if (navElement) {
+                const targetSectionId = navElement.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || sectionId;
+                document.querySelectorAll(`.nav-link[onclick*="'${targetSectionId}'"]`).forEach(link => {
+                    link.classList.add('active');
+                });
+            }
+            window.scrollTo(0, 0);
+        }
+
+        // Carga el contenido HTML inicial de cada sección
+        function loadSectionContent(sectionId) {
+            const sectionElement = document.getElementById(sectionId);
+            if (!sectionElement || sectionElement.innerHTML.trim() !== '') return; // No recargar si ya tiene contenido
+
+            // Añadir placeholder de carga mientras se genera el HTML
+            sectionElement.innerHTML = '<div class="loading-placeholder p-8"></div>';
+
+            switch (sectionId) {
+                case 'inicio': loadInicioHTML(); break;
+                case 'servicios': loadServiciosHTML(); break;
+                case 'tienda': loadTiendaHTML(); break;
+                case 'noticias': loadNoticiasHTML(); break;
+                case 'citas': loadCitasHTML(); break;
+                case 'opiniones': loadOpinionesHTML(); break;
+                case 'contacto': loadContactoHTML(); break;
+                case 'login': loadLoginHTML(); break;
+                case 'adminAppointments': loadAdminAppointmentsHTML(); break;
+            }
+        }
+
+        // --- MENÚ MÓVIL ---
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        function toggleMobileMenu() { mobileMenu.classList.toggle('hidden'); }
+        if (mobileMenuButton) mobileMenuButton.addEventListener('click', toggleMobileMenu);
+
+        // ========================================================================
+        // == AUTENTICACIÓN (FIREBASE AUTH) ==
+        // ========================================================================
+        auth?.onAuthStateChanged(user => {
+            const userGreetingNav = document.getElementById('user-greeting-nav');
+            const userNameDisplay = document.getElementById('user-name-display');
+            const navLogin = document.getElementById('nav-login');
+            const navLogout = document.getElementById('nav-logout');
+
+            const mobileUserGreetingNav = document.getElementById('mobile-user-greeting-nav');
+            const mobileUserNameDisplay = document.getElementById('mobile-user-name-display');
+            const mobileNavLogin = document.getElementById('mobile-nav-login');
+            const mobileNavLogout = document.getElementById('mobile-nav-logout');
+
+            const addReviewContainer = document.getElementById('addReviewContainer'); // Puede ser null si la sección no está cargada
+
+            if (user) {
+                console.log("Usuario conectado:", user.email);
+                currentUserIsAdmin = user.email === ADMIN_EMAIL_DEFINED;
+                console.log("Es admin:", currentUserIsAdmin);
+
+                // Actualizar UI para usuario logueado
+                const displayName = user.displayName || user.email.split('@')[0];
+                if (userNameDisplay) userNameDisplay.textContent = `Hola, ${displayName}`;
+                if (mobileUserNameDisplay) mobileUserNameDisplay.textContent = `Hola, ${displayName}`;
+
+                if (userGreetingNav) userGreetingNav.style.display = 'flex';
+                if (navLogin) navLogin.style.display = 'none';
+                if (mobileUserGreetingNav) mobileUserGreetingNav.style.display = 'flex';
+                if (mobileNavLogin) mobileNavLogin.style.display = 'none';
+
+                if (addReviewContainer) addReviewContainer.style.display = 'block';
+                const reviewerNameInput = document.getElementById('reviewerName');
+                if (reviewerNameInput && user.displayName) reviewerNameInput.value = user.displayName;
+
+
+            } else {
+                console.log("Usuario no está conectado.");
+                currentUserIsAdmin = false;
+
+                // Actualizar UI para usuario no logueado
+                if (userGreetingNav) userGreetingNav.style.display = 'none';
+                if (navLogin) navLogin.style.display = 'inline-block'; // O 'flex' si es necesario
+                if (mobileUserGreetingNav) mobileUserGreetingNav.style.display = 'none';
+                if (mobileNavLogin) mobileNavLogin.style.display = 'inline-block'; // O 'flex'
+
+                if (addReviewContainer) addReviewContainer.style.display = 'none';
+            }
+
+            // Actualizar visibilidad de elementos de admin en toda la página
+            document.querySelectorAll('.admin-only').forEach(el => {
+                el.style.display = currentUserIsAdmin ? 'block' : 'none'; // O 'flex' si corresponde
+            });
+            document.querySelectorAll('.admin-appointments-view').forEach(el => {
+                el.style.display = currentUserIsAdmin ? 'block' : 'none';
+            });
+            document.querySelectorAll('.admin-product-controls').forEach(el => {
+                el.style.display = currentUserIsAdmin ? 'flex' : 'none';
+            });
+
+            // Forzar re-renderizado de secciones que dependen del estado de admin si ya están cargadas
+            if (document.getElementById('servicesList')) renderServices();
+            if (document.getElementById('newsList')) renderNews();
+            if (document.getElementById('productsList')) renderProducts();
+            if (document.getElementById('reviewsList')) renderReviews();
+            if (document.getElementById('adminAppointmentsList')) renderAdminAppointments();
+
+            // Redirigir si no es admin y está en página de admin
+            if (!currentUserIsAdmin && document.getElementById('adminAppointments')?.classList.contains('active')) {
+                showSection('inicio', document.querySelector('header .nav-link[onclick*="inicio"]'));
+            }
+        });
+
+        function handleLogout() {
+            auth.signOut().then(() => {
+                console.log("Sesión cerrada exitosamente.");
+                // onAuthStateChanged se encargará de actualizar la UI
+                showSection('inicio', document.querySelector('header .nav-link[onclick*="inicio"]'));
+            }).catch(error => {
+                console.error("Error al cerrar sesión:", error);
+                alert("Error al cerrar sesión.");
+            });
+        }
+
+        // Asignar logout a los botones (se hace aquí porque los botones existen desde el inicio)
+        document.getElementById('nav-logout')?.addEventListener('click', handleLogout);
+        document.getElementById('mobile-nav-logout')?.addEventListener('click', () => { handleLogout(); toggleMobileMenu(); });
+
+
+        // ========================================================================
+        // == LÓGICA DE DATOS (FIRESTORE) ==
+        // ========================================================================
+
+        // --- SERVICIOS ---
+        function renderServices(servicesData = []) {
+            const listContainer = document.getElementById('servicesList');
+            const serviceTypeSelectInCitas = document.getElementById('serviceType'); // Para form de citas
+
+            if (!listContainer) return; // Si la sección no está cargada/visible
+            listContainer.innerHTML = ''; // Limpiar antes de renderizar
+            if (serviceTypeSelectInCitas) serviceTypeSelectInCitas.innerHTML = '<option value="">Seleccione un servicio</option>';
+
+
+            if (servicesData.length === 0) {
+                listContainer.innerHTML = '<p class="col-span-full text-gray-500">No hay servicios disponibles.</p>';
+                return;
+            }
+
+            servicesData.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+            servicesData.forEach(service => {
+                const imageUrl = service.imageUrl || `https://placehold.co/600x400/e2e8f0/334155?text=${encodeURIComponent(service.name)}`;
+                const serviceCard = `
+                    <div class="bg-gray-50 p-6 rounded-lg shadow hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between">
+                        <div>
+                            <img src="${imageUrl}" alt="[Imagen de ${service.name}]" class="mb-4 rounded-lg aspect-video object-cover w-full" onerror="this.src='https://placehold.co/600x400/e0e0e0/757575?text=Imagen+No+Disponible'; this.alt='Imagen no disponible para ${service.name}'">
+                            <h3 class="text-xl font-semibold text-blue-600 mb-2">${service.name}</h3>
+                            <p class="text-gray-600 text-sm mb-3">${service.description}</p>
+                        </div>
+                        ${currentUserIsAdmin ? `
+                        <div class="mt-auto pt-3 border-t border-gray-200 flex justify-end space-x-2">
+                            <button onclick="openServiceModal('${service.id}')" class="text-xs text-blue-500 hover:text-blue-700"><i class="fas fa-edit mr-1"></i>Editar</button>
+                            <button onclick="deleteService('${service.id}')" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash-alt mr-1"></i>Eliminar</button>
+                        </div>` : ''}
+                    </div>`;
+                listContainer.innerHTML += serviceCard;
+
+                // Poblar select en formulario de citas
+                if (serviceTypeSelectInCitas) {
+                    const option = document.createElement('option');
+                    option.value = service.name; // Usar nombre como valor
+                    option.textContent = service.name;
+                    serviceTypeSelectInCitas.appendChild(option);
+                }
+            });
+        }
+
+        function loadAndRenderServices() {
+            if (!db) return;
+            const listContainer = document.getElementById('servicesList');
+            if (listContainer) listContainer.innerHTML = '<div class="loading-placeholder col-span-full"></div>'; // Mostrar carga
+
+            db.collection("services").orderBy("name")
+                .onSnapshot((querySnapshot) => {
+                    const services = [];
+                    querySnapshot.forEach((doc) => {
+                        services.push({ id: doc.id, ...doc.data() });
+                    });
+                    renderServices(services); // Renderizar con los datos obtenidos
+                    // Poblar select de citas si la sección de citas está cargada
+                    if (document.getElementById('appointmentFormInternal')) {
+                        populateServiceSelect(services);
+                    }
+                }, (error) => {
+                    console.error("Error cargando servicios: ", error);
+                    if (listContainer) listContainer.innerHTML = '<p class="col-span-full text-red-500">Error al cargar servicios.</p>';
+                });
+        }
+
+        function openServiceModal(serviceId = null) {
+            const modal = document.getElementById('serviceModal');
+            const form = document.getElementById('serviceForm');
+            const title = document.getElementById('serviceModalTitle');
+            if (!modal || !form || !title) return;
+
+            form.reset();
+            document.getElementById('serviceId').value = serviceId || ''; // Poner ID si estamos editando
+
+            if (serviceId) {
+                title.textContent = "Editar Servicio";
+                // FB: Obtener datos del servicio específico para pre-llenar
+                db.collection("services").doc(serviceId).get().then(doc => {
+                    if (doc.exists) {
+                        const service = doc.data();
+                        document.getElementById('serviceNameModal').value = service.name;
+                        document.getElementById('serviceDescriptionModal').value = service.description;
+                        document.getElementById('serviceImageModal').value = service.imageUrl || '';
+                    } else {
+                        console.error("Servicio no encontrado para editar:", serviceId);
+                        closeServiceModal();
+                    }
+                }).catch(error => {
+                    console.error("Error obteniendo servicio para editar:", error);
+                    alert("Error al cargar datos del servicio.");
+                    closeServiceModal();
+                });
+            } else {
+                title.textContent = "Agregar Nuevo Servicio";
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeServiceModal() {
+            const modal = document.getElementById('serviceModal');
+            if (modal) modal.classList.add('hidden');
+            const form = document.getElementById('serviceForm');
+            if (form) form.reset();
+            document.getElementById('serviceId').value = '';
+        }
+
+        function handleServiceFormSubmit(e) {
+            e.preventDefault();
+            if (!db) return;
+            const id = document.getElementById('serviceId').value;
+            const servicePayload = {
+                name: document.getElementById('serviceNameModal').value,
+                description: document.getElementById('serviceDescriptionModal').value,
+                imageUrl: document.getElementById('serviceImageModal').value || '',
+                // FB: Añadir/actualizar timestamp
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            let promise;
+            if (id) { // Editar
+                promise = db.collection("services").doc(id).update(servicePayload);
+            } else { // Agregar
+                servicePayload.createdAt = firebase.firestore.FieldValue.serverTimestamp(); // Añadir timestamp de creación
+                promise = db.collection("services").add(servicePayload);
+            }
+
+            promise.then(() => {
+                console.log(id ? "Servicio actualizado" : "Servicio agregado");
+                closeServiceModal();
+                // onSnapshot se encargará de re-renderizar la lista
+            }).catch(error => {
+                console.error("Error guardando servicio: ", error);
+                alert("Error al guardar el servicio.");
+            });
+        }
+
+        function deleteService(serviceId) {
+            if (!currentUserIsAdmin || !db) return;
+            if (confirm("¿Está seguro de que desea eliminar este servicio?")) {
+                db.collection("services").doc(serviceId).delete()
+                    .then(() => {
+                        console.log("Servicio eliminado");
+                        // onSnapshot actualizará la lista
+                    })
+                    .catch(error => {
+                        console.error("Error eliminando servicio: ", error);
+                        alert("Error al eliminar el servicio.");
+                    });
+            }
+        }
+
+        // --- NOTICIAS ---
+        function renderNews(newsData = []) {
+            const listContainer = document.getElementById('newsList');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+
+            if (newsData.length === 0) {
+                listContainer.innerHTML = '<p class="text-gray-500">No hay noticias publicadas.</p>';
+                return;
+            }
+
+            // Ordenar por fecha (ya viene ordenado de Firestore, pero por si acaso)
+            newsData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+            newsData.forEach(newsItem => {
+                const imageUrl = newsItem.imageUrl || `https://placehold.co/800x400/e2e8f0/334155?text=${encodeURIComponent(newsItem.title)}`;
+                const createdAtDate = newsItem.createdAt ? new Date(newsItem.createdAt.seconds * 1000).toLocaleDateString() : 'Fecha desconocida';
+                const newsCard = `
+                    <article class="bg-gray-50 p-6 rounded-lg shadow hover:shadow-xl transition-shadow duration-300">
+                        <img src="${imageUrl}" alt="[Imagen de ${newsItem.title}]" class="mb-4 rounded-lg aspect-[16/7] object-cover w-full" onerror="this.src='https://placehold.co/800x400/e0e0e0/757575?text=Imagen+No+Disponible'; this.alt='Imagen no disponible para ${newsItem.title}'">
+                        <h3 class="text-2xl font-semibold text-blue-600 mb-2">${newsItem.title}</h3>
+                        <p class="text-sm text-gray-500 mb-3">Publicado: ${createdAtDate}</p>
+                        <p class="text-gray-700 whitespace-pre-line">${newsItem.content.substring(0, 250)}${newsItem.content.length > 250 ? '...' : ''}</p>
+                        ${currentUserIsAdmin ? `
+                        <div class="mt-3 pt-3 border-t border-gray-200 flex justify-end space-x-2">
+                            <button onclick="openNewsModal('${newsItem.id}')" class="text-xs text-blue-500 hover:text-blue-700"><i class="fas fa-edit mr-1"></i>Editar</button>
+                            <button onclick="deleteNews('${newsItem.id}')" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash-alt mr-1"></i>Eliminar</button>
+                        </div>` : ''}
+                    </article>`;
+                listContainer.innerHTML += newsCard;
+            });
+        }
+
+        function loadAndRenderNews() {
+            if (!db) return;
+            const listContainer = document.getElementById('newsList');
+            if (listContainer) listContainer.innerHTML = '<div class="loading-placeholder"></div>';
+
+            db.collection("news").orderBy("createdAt", "desc")
+                .onSnapshot((querySnapshot) => {
+                    const news = [];
+                    querySnapshot.forEach((doc) => {
+                        news.push({ id: doc.id, ...doc.data() });
+                    });
+                    renderNews(news);
+                }, (error) => {
+                    console.error("Error cargando noticias: ", error);
+                    if (listContainer) listContainer.innerHTML = '<p class="text-red-500">Error al cargar noticias.</p>';
+                });
+        }
+
+        function openNewsModal(newsId = null) {
+            const modal = document.getElementById('newsModal');
+            const form = document.getElementById('newsForm');
+            const title = document.getElementById('newsModalTitle');
+            if (!modal || !form || !title) return;
+
+            form.reset();
+            document.getElementById('newsIdModal').value = newsId || '';
+
+            if (newsId) {
+                title.textContent = "Editar Noticia";
+                // FB: Cargar datos de la noticia
+                db.collection("news").doc(newsId).get().then(doc => {
+                    if (doc.exists) {
+                        const newsItem = doc.data();
+                        document.getElementById('newsTitleModal').value = newsItem.title;
+                        document.getElementById('newsContentModal').value = newsItem.content;
+                        document.getElementById('newsImageModal').value = newsItem.imageUrl || '';
+                    } else {
+                        console.error("Noticia no encontrada para editar:", newsId);
+                        closeNewsModal();
+                    }
+                }).catch(error => {
+                    console.error("Error obteniendo noticia para editar:", error);
+                    alert("Error al cargar datos de la noticia.");
+                    closeNewsModal();
+                });
+            } else {
+                title.textContent = "Agregar Nueva Noticia";
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeNewsModal() {
+            const modal = document.getElementById('newsModal');
+            if (modal) modal.classList.add('hidden');
+            const form = document.getElementById('newsForm');
+            if (form) form.reset();
+            document.getElementById('newsIdModal').value = '';
+        }
+
+        function handleNewsFormSubmit(e) {
+            e.preventDefault();
+            if (!db) return;
+            const id = document.getElementById('newsIdModal').value;
+            const newsPayload = {
+                title: document.getElementById('newsTitleModal').value,
+                content: document.getElementById('newsContentModal').value,
+                imageUrl: document.getElementById('newsImageModal').value || '',
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            let promise;
+            if (id) { // Editar
+                promise = db.collection("news").doc(id).update(newsPayload);
+            } else { // Agregar
+                newsPayload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                promise = db.collection("news").add(newsPayload);
+            }
+
+            promise.then(() => {
+                console.log(id ? "Noticia actualizada" : "Noticia agregada");
+                closeNewsModal();
+            }).catch(error => {
+                console.error("Error guardando noticia: ", error);
+                alert("Error al guardar la noticia.");
+            });
+        }
+
+        function deleteNews(newsId) {
+            if (!currentUserIsAdmin || !db) return;
+            if (confirm("¿Está seguro de que desea eliminar esta noticia?")) {
+                db.collection("news").doc(newsId).delete()
+                    .then(() => {
+                        console.log("Noticia eliminada");
+                    })
+                    .catch(error => {
+                        console.error("Error eliminando noticia: ", error);
+                        alert("Error al eliminar la noticia.");
+                    });
+            }
+        }
+
+        // --- PRODUCTOS (TIENDA) ---
+        function renderProducts(productsToRender = []) {
+            const listContainer = document.getElementById('productsList');
+            if (!listContainer) return;
+            listContainer.innerHTML = ''; // Limpiar contenedor
+
+            if (productsToRender.length === 0) {
+                listContainer.innerHTML = '<p class="col-span-full text-center text-gray-500 py-10">No se encontraron productos.</p>';
+                // Mostrar mensaje si los filtros están activos pero no hay resultados
+                if (currentFilters.condition !== 'todos' || currentFilters.category.length > 0) {
+                    listContainer.innerHTML = '<p class="col-span-full text-center text-gray-500 py-10">No se encontraron productos que coincidan con los filtros seleccionados.</p>';
+                }
+                return;
+            }
+
+            // Ordenar (opcional, por nombre)
+            productsToRender.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+            productsToRender.forEach(product => {
+                const imageUrl = product.imageUrl || `https://placehold.co/400x400/e2e8f0/334155?text=${encodeURIComponent(product.name)}`;
+                const productCard = `
+                    <div class="bg-white p-4 rounded-lg shadow hover:shadow-xl transition-shadow duration-300 product-card border border-gray-200">
+                        <div>
+                            <img src="${imageUrl}" alt="[Imagen de ${product.name}]" class="mb-4 rounded-lg product-image w-full" onerror="this.src='https://placehold.co/400x400/e0e0e0/757575?text=Producto'; this.alt='Imagen no disponible para ${product.name}'">
+                            <span class="inline-block bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">${product.category || 'Sin Cat.'}</span>
+                            <span class="inline-block ${product.condition === 'Nuevo' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} text-xs font-medium mr-2 px-2.5 py-0.5 rounded">${product.condition || '?'}</span>
+                            ${product.brand ? `<span class="inline-block bg-gray-100 text-gray-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">${product.brand}</span>` : ''}
+                            ${product.btu ? `<span class="inline-block bg-purple-100 text-purple-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">${product.btu} BTU</span>` : ''}
+                            <h3 class="text-lg font-semibold text-gray-900 mt-2 mb-1">${product.name}</h3>
+                            <p class="text-gray-600 text-sm mb-2 product-description">${product.description}</p>
+                            <p class="text-xl font-bold text-green-700 mb-3">RD$ ${parseFloat(product.price || 0).toFixed(2)}</p>
+                        </div>
+                        <div class="mt-auto">
+                            <button onclick="handleBuyProduct('${product.id}')" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 mb-2 flex items-center justify-center">
+                                <i class="fab fa-whatsapp mr-2"></i>Comprar por WhatsApp
+                            </button>
+                            <div class="admin-product-controls pt-2 border-t border-gray-200 justify-end space-x-2" style="display: ${currentUserIsAdmin ? 'flex' : 'none'};">
+                                <button onclick="openProductModal('${product.id}')" class="text-xs text-blue-500 hover:text-blue-700"><i class="fas fa-edit mr-1"></i>Editar</button>
+                                <button onclick="deleteProduct('${product.id}')" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash-alt mr-1"></i>Eliminar</button>
+                            </div>
+                        </div>
+                    </div>`;
+                listContainer.innerHTML += productCard;
+            });
+        }
+
+        function applyFiltersAndRender() {
+            let filtered = allProducts.filter(product => {
+                const conditionMatch = currentFilters.condition === 'todos' || product.condition === currentFilters.condition;
+                const categoryMatch = currentFilters.category.length === 0 || currentFilters.category.includes(product.category);
+                return conditionMatch && categoryMatch;
+            });
+            renderProducts(filtered);
+        }
+
+        function updateFilters() {
+            const conditionFilter = document.querySelector('input[name="filterCondition"]:checked');
+            currentFilters.condition = conditionFilter ? conditionFilter.value : 'todos';
+
+            const categoryFilters = document.querySelectorAll('input[name="filterCategory"]:checked');
+            currentFilters.category = Array.from(categoryFilters).map(cb => cb.value);
+
+            applyFiltersAndRender(); // Aplicar filtros y re-renderizar
+        }
+
+        function setupFilters(products = []) {
+            const filterContainer = document.getElementById('filters');
+            if (!filterContainer) return;
+
+            const categories = [...new Set(products.map(p => p.category).filter(Boolean))].sort(); // Filtrar nulos/undefined
+
+            let filterHtml = `
+                <h4 class="font-semibold mb-2 text-gray-700">Condición</h4>
+                <div class="space-y-1 mb-4">
+                    <div>
+                        <input type="radio" id="cond-todos" name="filterCondition" value="todos" ${currentFilters.condition === 'todos' ? 'checked' : ''} onchange="updateFilters()">
+                        <label for="cond-todos" class="ml-2 text-sm text-gray-600">Todos</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="cond-nuevo" name="filterCondition" value="Nuevo" ${currentFilters.condition === 'Nuevo' ? 'checked' : ''} onchange="updateFilters()">
+                        <label for="cond-nuevo" class="ml-2 text-sm text-gray-600">Nuevo</label>
+                    </div>
+                    <div>
+                        <input type="radio" id="cond-usado" name="filterCondition" value="Usado" ${currentFilters.condition === 'Usado' ? 'checked' : ''} onchange="updateFilters()">
+                        <label for="cond-usado" class="ml-2 text-sm text-gray-600">Usado</label>
+                    </div>
+                </div>
+                <h4 class="font-semibold mb-2 text-gray-700">Categoría</h4>
+                <div class="space-y-1">
+            `;
+
+            if (categories.length > 0) {
+                categories.forEach(category => {
+                    const categoryId = `cat-${category.replace(/\s+/g, '-')}`;
+                    filterHtml += `
+                        <div>
+                            <input type="checkbox" id="${categoryId}" name="filterCategory" value="${category}" ${currentFilters.category.includes(category) ? 'checked' : ''} onchange="updateFilters()">
+                            <label for="${categoryId}" class="ml-2 text-sm text-gray-600">${category}</label>
+                        </div>
+                    `;
+                });
+            } else {
+                filterHtml += '<p class="text-sm text-gray-500">No hay categorías.</p>';
+            }
+
+
+            filterHtml += `</div>`;
+            filterContainer.innerHTML = filterHtml;
+        }
+
+        function loadAndRenderProducts() {
+            if (!db) return;
+            const listContainer = document.getElementById('productsList');
+            if (listContainer) listContainer.innerHTML = '<div class="loading-placeholder col-span-full"></div>';
+
+            db.collection("products").orderBy("createdAt", "desc")
+                .onSnapshot((querySnapshot) => {
+                    allProducts = []; // Resetear caché local
+                    querySnapshot.forEach((doc) => {
+                        allProducts.push({ id: doc.id, ...doc.data() });
+                    });
+                    setupFilters(allProducts); // Configurar filtros con las categorías actuales
+                    applyFiltersAndRender(); // Renderizar productos aplicando filtros iniciales
+                }, (error) => {
+                    console.error("Error cargando productos: ", error);
+                    if (listContainer) listContainer.innerHTML = '<p class="col-span-full text-red-500">Error al cargar productos.</p>';
+                });
+        }
+
+
+        function openProductModal(productId = null) {
+            const modal = document.getElementById('productModal');
+            const form = document.getElementById('productForm');
+            const title = document.getElementById('productModalTitle');
+            if (!modal || !form || !title) return;
+
+            form.reset();
+            document.getElementById('productIdModal').value = productId || '';
+
+            if (productId) {
+                title.textContent = "Editar Producto";
+                // FB: Cargar datos del producto
+                db.collection("products").doc(productId).get().then(doc => {
+                    if (doc.exists) {
+                        const product = doc.data();
+                        document.getElementById('productNameModal').value = product.name;
+                        document.getElementById('productCategoryModal').value = product.category;
+                        document.getElementById('productConditionModal').value = product.condition || 'Nuevo';
+                        document.getElementById('productPriceModal').value = product.price;
+                        document.getElementById('productBtuModal').value = product.btu || '';
+                        document.getElementById('productBrandModal').value = product.brand || '';
+                        document.getElementById('productDescriptionModal').value = product.description;
+                        document.getElementById('productImageModal').value = product.imageUrl || '';
+                    } else {
+                        console.error("Producto no encontrado para editar:", productId);
+                        closeProductModal();
+                    }
+                }).catch(error => {
+                    console.error("Error obteniendo producto para editar:", error);
+                    alert("Error al cargar datos del producto.");
+                    closeProductModal();
+                });
+            } else {
+                title.textContent = "Agregar Nuevo Producto";
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeProductModal() {
+            const modal = document.getElementById('productModal');
+            if (modal) modal.classList.add('hidden');
+            const form = document.getElementById('productForm');
+            if (form) form.reset();
+            document.getElementById('productIdModal').value = '';
+        }
+
+        function handleProductFormSubmit(e) {
+            e.preventDefault();
+            if (!db) return;
+            const id = document.getElementById('productIdModal').value;
+            const productPayload = {
+                name: document.getElementById('productNameModal').value,
+                category: document.getElementById('productCategoryModal').value,
+                condition: document.getElementById('productConditionModal').value,
+                price: parseFloat(document.getElementById('productPriceModal').value),
+                btu: document.getElementById('productBtuModal').value ? parseInt(document.getElementById('productBtuModal').value) : null,
+                brand: document.getElementById('productBrandModal').value || null,
+                description: document.getElementById('productDescriptionModal').value,
+                imageUrl: document.getElementById('productImageModal').value || '',
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            // Validar precio
+            if (isNaN(productPayload.price) || productPayload.price < 0) {
+                alert("Por favor, ingrese un precio válido.");
+                return;
+            }
+
+            let promise;
+            if (id) { // Editar
+                promise = db.collection("products").doc(id).update(productPayload);
+            } else { // Agregar
+                productPayload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                promise = db.collection("products").add(productPayload);
+            }
+
+            promise.then(() => {
+                console.log(id ? "Producto actualizado" : "Producto agregado");
+                closeProductModal();
+                // onSnapshot actualizará la lista y los filtros
+            }).catch(error => {
+                console.error("Error guardando producto: ", error);
+                alert("Error al guardar el producto.");
+            });
+        }
+
+        function deleteProduct(productId) {
+            if (!currentUserIsAdmin || !db) return;
+            if (confirm("¿Está seguro de que desea eliminar este producto?")) {
+                db.collection("products").doc(productId).delete()
+                    .then(() => {
+                        console.log("Producto eliminado");
+                        // onSnapshot actualizará la lista y filtros
+                    })
+                    .catch(error => {
+                        console.error("Error eliminando producto: ", error);
+                        alert("Error al eliminar el producto.");
+                    });
+            }
+        }
+
+        function handleBuyProduct(productId) {
+            // FB: Buscar el producto en Firestore para obtener datos actualizados
+            db.collection("products").doc(productId).get().then(doc => {
+                if (!doc.exists) {
+                    alert("Producto no encontrado.");
+                    return;
+                }
+                const product = doc.data();
+                const whatsappNumber = "+18295764243"; // Número de WhatsApp
+                let message = `Hola, estoy interesado en comprar el siguiente producto:\n\n` +
+                    `*Producto:* ${product.name}\n` +
+                    `*Tipo:* ${product.category}\n` +
+                    `*Condición:* ${product.condition}\n`;
+                if (product.brand) message += `*Marca:* ${product.brand}\n`;
+                if (product.btu) message += `*BTU:* ${product.btu}\n`;
+                message += `*Precio:* RD$ ${parseFloat(product.price).toFixed(2)}\n\n` +
+                    `Espero su respuesta. ¡Gracias!`;
+
+                const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+
+            }).catch(error => {
+                console.error("Error al obtener producto para comprar:", error);
+                alert("Error al obtener detalles del producto.");
+            });
+        }
+
+        // --- OPINIONES ---
+        function renderReviews(reviewsData = []) {
+            const listContainer = document.getElementById('reviewsList');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+
+            if (reviewsData.length === 0) {
+                listContainer.innerHTML = '<p class="text-gray-500">Aún no hay opiniones. ¡Sea el primero!</p>';
+                return;
+            }
+
+            reviewsData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+            reviewsData.forEach(review => {
+                const starsHtml = Array(5).fill(0).map((_, i) =>
+                    `<span class="${i < review.rating ? 'text-yellow-500' : 'text-gray-300'}">★</span>`
+                ).join('');
+                const createdAtDate = review.createdAt ? new Date(review.createdAt.seconds * 1000).toLocaleString() : 'Fecha desconocida';
+                const reviewCard = `
+                    <div class="bg-gray-50 p-4 rounded-lg shadow">
+                        <div class="flex justify-between items-start">
+                            <p class="font-semibold text-gray-700">${review.reviewerName || 'Anónimo'}</p>
+                            <div class="text-sm">${starsHtml}</div>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-1">${createdAtDate}</p>
+                        <p class="text-gray-600 mt-1 whitespace-pre-line">${review.text}</p>
+                         <div class="admin-only mt-2 text-right" style="display: ${currentUserIsAdmin ? 'block' : 'none'};">
+                            <button onclick="deleteReview('${review.id}')" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash-alt mr-1"></i>Eliminar</button>
+                         </div>
+                    </div>`;
+                listContainer.innerHTML += reviewCard;
+            });
+        }
+
+        function loadAndRenderReviews() {
+            if (!db) return;
+            const listContainer = document.getElementById('reviewsList');
+            if (listContainer) listContainer.innerHTML = '<div class="loading-placeholder"></div>';
+
+            db.collection("reviews").orderBy("createdAt", "desc").limit(15) // Limitar cantidad inicial
+                .onSnapshot((querySnapshot) => {
+                    const reviews = [];
+                    querySnapshot.forEach((doc) => {
+                        reviews.push({ id: doc.id, ...doc.data() });
+                    });
+                    renderReviews(reviews);
+                }, (error) => {
+                    console.error("Error cargando opiniones: ", error);
+                    if (listContainer) listContainer.innerHTML = '<p class="text-red-500">Error al cargar opiniones.</p>';
+                });
+        }
+
+        function handleReviewFormSubmit(e) {
+            e.preventDefault();
+            if (!auth || !db) return;
+            const reviewFormEl = document.getElementById('reviewFormInternal');
+            const reviewFormMessage = document.getElementById('reviewFormMessage');
+            if (!reviewFormEl || !reviewFormMessage) return;
+
+            const currentUser = auth.currentUser;
+            if (!currentUser) {
+                reviewFormMessage.textContent = 'Debe iniciar sesión para dejar una opinión.';
+                reviewFormMessage.className = 'mt-3 text-center text-red-600';
+                // Opcional: redirigir a login
+                setTimeout(() => showSection('login', document.querySelector('#nav-login')), 2000);
+                return;
+            }
+
+
+            reviewFormMessage.textContent = '';
+            const reviewerNameEl = document.getElementById('reviewerName');
+            const reviewTextEl = document.getElementById('reviewText');
+
+            if (currentRating === 0) {
+                reviewFormMessage.textContent = 'Por favor, seleccione una calificación.'; reviewFormMessage.className = 'mt-3 text-center text-red-600'; return;
+            }
+            if (!reviewTextEl.value.trim()) {
+                reviewFormMessage.textContent = 'Por favor, escriba un comentario.'; reviewFormMessage.className = 'mt-3 text-center text-red-600'; return;
+            }
+
+            const reviewData = {
+                reviewerName: reviewerNameEl.value.trim() || currentUser.displayName || "Anónimo",
+                rating: currentRating,
+                text: reviewTextEl.value.trim(),
+                userId: currentUser.uid,
+                userEmail: currentUser.email, // Guardar email para posible moderación
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            };
+
+            db.collection("reviews").add(reviewData)
+                .then(() => {
+                    reviewFormMessage.textContent = 'Opinión enviada con éxito. ¡Gracias!';
+                    reviewFormMessage.className = 'mt-3 text-center text-green-600';
+                    reviewFormEl.reset();
+                    currentRating = 0;
+                    const reviewRatingInput = document.getElementById('reviewRating');
+                    if (reviewRatingInput) reviewRatingInput.value = 0;
+                    const ratingStarsEl = document.getElementById('ratingStars');
+                    if (ratingStarsEl) ratingStarsEl.querySelectorAll('span').forEach(s => s.classList.remove('selected'));
+                    // Pre-llenar nombre de nuevo si está logueado
+                    if (reviewerNameEl && currentUser.displayName) reviewerNameEl.value = currentUser.displayName;
+
+                    setTimeout(() => reviewFormMessage.textContent = '', 4000);
+                })
+                .catch(error => {
+                    console.error("Error guardando opinión: ", error);
+                    reviewFormMessage.textContent = 'Error al enviar su opinión.';
+                    reviewFormMessage.className = 'mt-3 text-center text-red-600';
+                });
+        }
+
+        function deleteReview(reviewId) {
+            if (!currentUserIsAdmin || !db) return;
+            if (confirm("¿Está seguro de que desea eliminar esta opinión?")) {
+                db.collection("reviews").doc(reviewId).delete()
+                    .then(() => console.log("Opinión eliminada"))
+                    .catch(error => {
+                        console.error("Error eliminando opinión: ", error);
+                        alert("Error al eliminar la opinión.");
+                    });
+            }
+        }
+
+        // --- GESTIÓN DE CITAS (ADMIN) ---
+        function renderAdminAppointments(appointmentsData = []) {
+            const listContainer = document.getElementById('adminAppointmentsList');
+            if (!listContainer) return; // No renderizar si la sección no está visible/cargada
+            listContainer.innerHTML = '';
+
+            if (!currentUserIsAdmin) {
+                listContainer.innerHTML = '<p class="text-gray-500">Acceso restringido a administradores.</p>';
+                return;
+            }
+
+            if (appointmentsData.length === 0) {
+                listContainer.innerHTML = '<p class="text-gray-500">No hay citas agendadas.</p>';
+                return;
+            }
+
+            appointmentsData.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+            appointmentsData.forEach(appt => {
+                const statusClass = `status-${appt.status || 'pendiente'}`;
+                const createdAtDate = appt.createdAt ? new Date(appt.createdAt.seconds * 1000).toLocaleString() : 'Fecha desconocida';
+                // Formatear fecha de cita si existe
+                let appointmentDateFormatted = 'Fecha no especificada';
+                if (appt.appointmentDate) {
+                    try {
+                        // Intentar crear fecha (puede ser string YYYY-MM-DD)
+                        const dateObj = new Date(appt.appointmentDate + 'T00:00:00'); // Añadir hora para evitar problemas de zona horaria
+                        if (!isNaN(dateObj)) {
+                            appointmentDateFormatted = dateObj.toLocaleDateString();
+                        }
+                    } catch (e) { console.warn("Formato de fecha de cita inválido:", appt.appointmentDate); }
+                }
+
+
+                const card = `
+                    <div class="bg-white p-4 rounded-lg shadow appointment-card ${statusClass}">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-semibold text-lg">${appt.customerName} - ${appt.serviceType}</h4>
+                            <span class="text-xs px-2 py-1 rounded-full capitalize bg-gray-200 text-gray-700 status-${appt.status}">${appt.status}</span>
+                        </div>
+                        <p class="text-sm text-gray-600">Fecha: ${appointmentDateFormatted} a las ${appt.appointmentTime || 'Hora no especificada'}</p>
+                        <p class="text-sm text-gray-600">Tel: ${appt.contactPhone}</p>
+                        ${appt.message ? `<p class="text-sm text-gray-500 mt-1 italic">Mensaje: ${appt.message}</p>` : ''}
+                        <p class="text-xs text-gray-400 mt-2">Solicitada: ${createdAtDate}</p>
+                        <div class="mt-3 pt-3 border-t flex flex-wrap gap-2">
+                            <select onchange="updateAppointmentStatus('${appt.id}', this.value)" class="text-xs p-1 border rounded focus:ring-blue-500 focus:border-blue-500">
+                                <option value="pendiente" ${appt.status === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                                <option value="confirmada" ${appt.status === 'confirmada' ? 'selected' : ''}>Confirmada</option>
+                                <option value="completada" ${appt.status === 'completada' ? 'selected' : ''}>Completada</option>
+                                <option value="cancelada" ${appt.status === 'cancelada' ? 'selected' : ''}>Cancelada</option>
+                            </select>
+                            <button onclick="deleteAppointment('${appt.id}')" class="text-xs bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded"><i class="fas fa-trash-alt mr-1"></i>Eliminar</button>
+                        </div>
+                    </div>`;
+                listContainer.innerHTML += card;
+            });
+        }
+
+        function loadAndRenderAdminAppointments() {
+            if (!db || !currentUserIsAdmin) return; // Solo cargar si es admin
+            const listContainer = document.getElementById('adminAppointmentsList');
+            if (listContainer) listContainer.innerHTML = '<div class="loading-placeholder"></div>';
+
+            db.collection("appointments").orderBy("createdAt", "desc")
+                .onSnapshot((querySnapshot) => {
+                    const appointments = [];
+                    querySnapshot.forEach((doc) => {
+                        appointments.push({ id: doc.id, ...doc.data() });
+                    });
+                    renderAdminAppointments(appointments);
+                }, (error) => {
+                    console.error("Error cargando citas (admin): ", error);
+                    if (listContainer) listContainer.innerHTML = '<p class="text-red-500">Error al cargar citas.</p>';
+                });
+        }
+
+        function updateAppointmentStatus(appointmentId, newStatus) {
+            if (!currentUserIsAdmin || !db) return;
+            db.collection("appointments").doc(appointmentId).update({
+                status: newStatus,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+                .then(() => console.log("Estado de cita actualizado"))
+                .catch(error => {
+                    console.error("Error actualizando estado de cita: ", error);
+                    alert("Error al actualizar el estado.");
+                });
+        }
+
+        function deleteAppointment(appointmentId) {
+            if (!currentUserIsAdmin || !db) return;
+            if (confirm("¿Está seguro de que desea eliminar esta cita?")) {
+                db.collection("appointments").doc(appointmentId).delete()
+                    .then(() => console.log("Cita eliminada"))
+                    .catch(error => {
+                        console.error("Error eliminando cita: ", error);
+                        alert("Error al eliminar la cita.");
+                    });
+            }
+        }
+
+        // --- FORMULARIO DE CITAS ---
+        function handleAppointmentFormSubmit(e) {
+            e.preventDefault();
+            if (!db) return;
+            const form = e.target;
+            const appointmentMessage = document.getElementById('appointmentMessage');
+            if (!appointmentMessage) return;
+            appointmentMessage.textContent = '';
+
+            const appointmentData = {
+                customerName: form.customerName.value,
+                serviceType: form.serviceType.value,
+                appointmentDate: form.appointmentDate.value,
+                appointmentTime: form.appointmentTime.value,
+                contactPhone: form.contactPhone.value,
+                message: form.message.value,
+                status: 'pendiente',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                // FB: Asociar con usuario si está logueado
+                userId: auth?.currentUser ? auth.currentUser.uid : null,
+                userEmail: auth?.currentUser ? auth.currentUser.email : null
+            };
+
+            db.collection("appointments").add(appointmentData)
+                .then(() => {
+                    appointmentMessage.textContent = 'Solicitud de cita enviada con éxito.';
+                    appointmentMessage.className = 'mt-4 text-center text-green-600';
+                    form.reset();
+                    // No es necesario re-renderizar admin si el usuario no es admin
+                })
+                .catch(error => {
+                    console.error("Error guardando cita: ", error);
+                    appointmentMessage.textContent = 'Error al enviar la solicitud.';
+                    appointmentMessage.className = 'mt-4 text-center text-red-600';
+                });
+
+            setTimeout(() => { if (appointmentMessage) appointmentMessage.textContent = ''; }, 4000);
+        }
+
+        // --- FORMULARIO DE CONTACTO ---
+        function handleContactFormSubmit(e) {
+            e.preventDefault();
+            if (!db) return;
+            const form = e.target;
+            const contactFormMessage = document.getElementById('contactFormMessage');
+            if (!contactFormMessage) return;
+            contactFormMessage.textContent = '';
+
+            const contactData = {
+                name: form.contactName.value,
+                email: form.contactEmail.value,
+                message: form.contactMessageText.value,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            db.collection("contactMessages").add(contactData)
+                .then(() => {
+                    contactFormMessage.textContent = 'Mensaje enviado con éxito. Gracias.';
+                    contactFormMessage.className = 'mt-4 text-center text-green-600';
+                    form.reset();
+                })
+                .catch(error => {
+                    console.error("Error guardando mensaje de contacto: ", error);
+                    contactFormMessage.textContent = 'Error al enviar el mensaje.';
+                    contactFormMessage.className = 'mt-4 text-center text-red-600';
+                });
+
+            setTimeout(() => { if (contactFormMessage) contactFormMessage.textContent = ''; }, 4000);
+        }
+
+        // --- FORMULARIO DE LOGIN ---
+        function handleLoginFormSubmit(e) {
+            e.preventDefault();
+            if (!auth) return;
+            const form = e.target;
+            const email = form.loginEmail.value;
+            const password = form.loginPassword.value;
+            const loginMessage = document.getElementById('loginMessage');
+            if (!loginMessage) return;
+            loginMessage.textContent = 'Iniciando sesión...';
+            loginMessage.className = 'mt-4 text-center text-sm text-gray-600';
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then(userCredential => {
+                    // onAuthStateChanged se encargará de actualizar UI y estado
+                    loginMessage.textContent = 'Inicio de sesión exitoso.';
+                    loginMessage.className = 'mt-4 text-center text-sm text-green-600';
+                    setTimeout(() => {
+                        showSection('inicio', document.querySelector('header .nav-link[onclick*="inicio"]'));
+                        form.reset();
+                        if (loginMessage) loginMessage.textContent = '';
+                    }, 1500);
+                })
+                .catch(error => {
+                    console.error("Error de inicio de sesión:", error);
+                    loginMessage.textContent = `Error: ${mapFirebaseAuthError(error.code)}`;
+                    loginMessage.className = 'mt-4 text-center text-sm text-red-600';
+                });
+        }
+
+        // --- FORMULARIO DE REGISTRO ---
+        function handleRegisterFormSubmit(e) {
+            e.preventDefault();
+            if (!auth || !db) return;
+            const form = e.target;
+            const name = form.registerName.value;
+            const email = form.registerEmail.value;
+            const password = form.registerPassword.value;
+            const registerMessage = document.getElementById('registerMessage');
+            if (!registerMessage) return;
+            registerMessage.textContent = 'Registrando...';
+            registerMessage.className = 'mt-4 text-center text-sm text-gray-600';
+
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(userCredential => {
+                    const user = userCredential.user;
+                    // Actualizar perfil de Firebase Auth
+                    return user.updateProfile({ displayName: name })
+                        .then(() => {
+                            // Guardar información adicional en Firestore
+                            return db.collection('users').doc(user.uid).set({
+                                name: name,
+                                email: email,
+                                role: 'cliente', // Rol por defecto
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        });
+                })
+                .then(() => {
+                    registerMessage.textContent = 'Registro exitoso. Ahora puede iniciar sesión.';
+                    registerMessage.className = 'mt-4 text-center text-sm text-green-600';
+                    form.reset();
+                    setTimeout(() => {
+                        // Cambiar a la pestaña de login
+                        const loginTabEl = document.getElementById('login-tab');
+                        if (loginTabEl) loginTabEl.click();
+                        if (registerMessage) registerMessage.textContent = '';
+                    }, 2000);
+                })
+                .catch(error => {
+                    console.error("Error de registro:", error);
+                    registerMessage.textContent = `Error: ${mapFirebaseAuthError(error.code)}`;
+                    registerMessage.className = 'mt-4 text-center text-sm text-red-600';
+                });
+        }
+
+        // --- MAPEO DE ERRORES AUTH ---
+        function mapFirebaseAuthError(errorCode) {
+            switch (errorCode) {
+                case 'auth/invalid-email': return 'El formato del email es inválido.';
+                case 'auth/user-not-found': return 'No se encontró usuario con ese email.';
+                case 'auth/wrong-password': return 'Contraseña incorrecta.';
+                case 'auth/email-already-in-use': return 'Este email ya está registrado.';
+                case 'auth/weak-password': return 'La contraseña es débil (mínimo 6 caracteres).';
+                case 'auth/operation-not-allowed': return 'Operación no permitida (revisa config. Firebase).';
+                default: return 'Ocurrió un error inesperado.';
+            }
+        }
+
+        // --- PESTAÑAS LOGIN/REGISTRO ---
+        function switchAuthTab(activateTab, deactivateTab, showContainer, hideContainer) {
+            if (showContainer) showContainer.classList.remove('hidden');
+            if (hideContainer) hideContainer.classList.add('hidden');
+            if (activateTab) {
+                activateTab.classList.add('border-blue-500', 'text-blue-600', 'border-b-2');
+                activateTab.classList.remove('border-transparent', 'hover:text-gray-600', 'hover:border-gray-300');
+                activateTab.setAttribute('aria-selected', 'true');
+            }
+            if (deactivateTab) {
+                deactivateTab.classList.add('border-transparent', 'hover:text-gray-600', 'hover:border-gray-300');
+                deactivateTab.classList.remove('border-blue-500', 'text-blue-600', 'border-b-2');
+                deactivateTab.setAttribute('aria-selected', 'false');
+            }
+        }
+
+        // ========================================================================
+        // == CARGA INICIAL DE HTML PARA SECCIONES ==
+        // ========================================================================
+        function loadInicioHTML() {
+            const container = document.getElementById('inicio');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="bg-white p-8 rounded-lg shadow-lg">
+                    <h1 class="text-4xl font-bold text-gray-800 mb-6">Bienvenido a Grupo Técnico Soluciones</h1>
+                    <p class="text-lg text-gray-600 mb-4">Su socio confiable para servicios de refrigeración, electricidad y aire acondicionado en la República Dominicana.</p>
+                    <p class="text-lg text-gray-600 mb-8">Explore nuestros servicios, compre repuestos o agende una cita con nosotros fácilmente.</p>
+                    <div class="flex flex-wrap gap-4">
+                        <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300" onclick="showSection('servicios', document.querySelector('.nav-link[onclick*=\\'servicios\\']'))">Ver Servicios</button>
+                        <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300" onclick="showSection('tienda', document.querySelector('.nav-link[onclick*=\\'tienda\\']'))">Ir a la Tienda</button>
+                        <button class="bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300" onclick="showSection('citas', document.querySelector('.nav-link[onclick*=\\'citas\\']'))">Agendar Cita</button>
+                    </div>
+                </div>`;
+        }
+
+        function loadServiciosHTML() {
+            const container = document.getElementById('servicios');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="bg-white p-8 rounded-lg shadow-lg">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800">Nuestros Servicios</h2>
+                        <button class="admin-only bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300" onclick="openServiceModal()" style="display: ${currentUserIsAdmin ? 'block' : 'none'};">
+                            <i class="fas fa-plus mr-2"></i>Agregar Servicio
+                        </button>
+                    </div>
+                    <p class="text-gray-600 mb-4">Ofrecemos una amplia gama de soluciones profesionales.</p>
+                    <div id="servicesList" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 loading-placeholder">
+                        </div>
+                </div>`;
+            loadAndRenderServices(); // Iniciar carga de datos
+        }
+
+        function loadTiendaHTML() {
+            const container = document.getElementById('tienda');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="bg-white p-8 rounded-lg shadow-lg">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h2 class="text-3xl font-bold text-gray-800">Tienda de Aires Acondicionados</h2>
+                        <div class="flex gap-2">
+                            <button id="toggleFiltersBtn" class="md:hidden bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg shadow-sm">
+                                <i class="fas fa-filter mr-2"></i>Filtros
+                            </button>
+                            <button class="admin-only bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300" onclick="openProductModal()" style="display: ${currentUserIsAdmin ? 'block' : 'none'};">
+                                <i class="fas fa-plus mr-2"></i>Agregar Producto
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-8">
+                        <aside id="filterSidebar" class="w-full md:w-1/4 lg:w-1/5 bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 h-fit md:sticky top-24 transform -translate-x-full md:transform-none transition-transform duration-300 ease-in-out">
+                            <button id="closeFiltersBtn" class="md:hidden float-right text-gray-500 hover:text-gray-700 mb-2">
+                                <i class="fas fa-times"></i> Cerrar
+                            </button>
+                            <h3 class="text-xl font-semibold mb-4 border-b pb-2 clear-both">Filtros</h3>
+                            <div id="filters" class="loading-placeholder">
+                                </div>
+                        </aside>
+                        <div class="w-full md:w-3/4 lg:w-4/5">
+                            <div id="productsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 loading-placeholder">
+                                </div>
+                        </div>
+                    </div>
+                </div>`;
+            // Añadir listeners para botones de filtros móviles después de crear el HTML
+            document.getElementById('toggleFiltersBtn')?.addEventListener('click', () => {
+                document.getElementById('filterSidebar')?.classList.remove('-translate-x-full');
+            });
+            document.getElementById('closeFiltersBtn')?.addEventListener('click', () => {
+                document.getElementById('filterSidebar')?.classList.add('-translate-x-full');
+            });
+            loadAndRenderProducts(); // Iniciar carga de datos
+        }
+
+        function loadNoticiasHTML() {
+            const container = document.getElementById('noticias');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="bg-white p-8 rounded-lg shadow-lg">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-3xl font-bold text-gray-800">Noticias y Novedades</h2>
+                        <button class="admin-only bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300" onclick="openNewsModal()" style="display: ${currentUserIsAdmin ? 'block' : 'none'};">
+                            <i class="fas fa-plus mr-2"></i>Agregar Noticia
+                        </button>
+                    </div>
+                    <p class="text-gray-600 mb-4">Últimas noticias, consejos y promociones.</p>
+                    <div id="newsList" class="space-y-6 loading-placeholder">
+                         </div>
+                </div>`;
+            loadAndRenderNews(); // Iniciar carga de datos
+        }
+
+        function loadCitasHTML() {
+            const container = document.getElementById('citas');
+            if (!container) return;
+            const todayForMinDate = new Date().toISOString().split('T')[0];
+            container.innerHTML = `
+            <div class="bg-white p-8 rounded-lg shadow-lg">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Agendar una Cita</h2>
+                <p class="text-gray-600 mb-4">Complete el formulario para solicitar una cita. Nos pondremos en contacto para confirmar.</p>
+                <form id="appointmentFormInternal" class="space-y-6">
+                    <div><label for="customerName" class="block text-sm font-medium text-gray-700">Nombre Completo</label><input type="text" id="customerName" name="customerName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></div>
+                    <div><label for="serviceType" class="block text-sm font-medium text-gray-700">Tipo de Servicio</label><select id="serviceType" name="serviceType" required class="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"><option value="">Cargando servicios...</option></select></div>
+                    <div><label for="appointmentDate" class="block text-sm font-medium text-gray-700">Fecha Preferida</label><input type="date" id="appointmentDate" name="appointmentDate" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" min="${todayForMinDate}"></div>
+                    <div><label for="appointmentTime" class="block text-sm font-medium text-gray-700">Hora Preferida</label><input type="time" id="appointmentTime" name="appointmentTime" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></div>
+                    <div><label for="contactPhone" class="block text-sm font-medium text-gray-700">Teléfono de Contacto</label><input type="tel" id="contactPhone" name="contactPhone" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></div>
+                    <div><label for="message" class="block text-sm font-medium text-gray-700">Mensaje Adicional (opcional)</label><textarea id="message" name="message" rows="3" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea></div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-300">Enviar Solicitud de Cita</button>
+                </form>
+                <div id="appointmentMessage" class="mt-4 text-center"></div>
+            </div>`;
+            // Añadir listener al formulario
+            const form = document.getElementById('appointmentFormInternal');
+            if (form) {
+                form.removeEventListener('submit', handleAppointmentFormSubmit); // Prevenir duplicados
+                form.addEventListener('submit', handleAppointmentFormSubmit);
+            }
+            // Cargar servicios en el select
+            if (db) {
+                db.collection("services").orderBy("name").get()
+                    .then(querySnapshot => {
+                        const services = [];
+                        querySnapshot.forEach(doc => services.push({ id: doc.id, ...doc.data() }));
+                        populateServiceSelect(services);
+                    })
+                    .catch(error => {
+                        console.error("Error cargando servicios para citas:", error);
+                        const serviceSelect = document.getElementById('serviceType');
+                        if (serviceSelect) serviceSelect.innerHTML = '<option value="">Error al cargar</option>';
+                    });
+            }
+        }
+        // Función auxiliar para poblar el select de servicios en Citas
+        function populateServiceSelect(servicesData = []) {
+            const serviceSelect = document.getElementById('serviceType');
+            if (!serviceSelect) return;
+            serviceSelect.innerHTML = '<option value="">Seleccione un servicio</option>'; // Limpiar
+            servicesData.forEach(service => {
+                const option = document.createElement('option');
+                option.value = service.name;
+                option.textContent = service.name;
+                serviceSelect.appendChild(option);
+            });
+        }
+
+
+        function loadOpinionesHTML() {
+            const container = document.getElementById('opiniones');
+            if (!container) return;
+            container.innerHTML = `
+            <div class="bg-white p-8 rounded-lg shadow-lg">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Opiniones de Nuestros Clientes</h2>
+                <div id="addReviewContainer" class="mb-8 p-6 bg-gray-50 rounded-lg shadow auth-hidden-until-ready" style="display: none;"> <h3 class="text-xl font-semibold text-gray-700 mb-3">Deje su Opinión</h3>
+                    <form id="reviewFormInternal" class="space-y-4">
+                        <div><label for="reviewerName" class="block text-sm font-medium text-gray-700">Su Nombre</label><input type="text" id="reviewerName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                        <div><label class="block text-sm font-medium text-gray-700">Calificación</label><div id="ratingStars" class="rating-stars"><span data-value="1">★</span><span data-value="2">★</span><span data-value="3">★</span><span data-value="4">★</span><span data-value="5">★</span></div><input type="hidden" id="reviewRating" value="0"></div>
+                        <div><label for="reviewText" class="block text-sm font-medium text-gray-700">Su Comentario</label><textarea id="reviewText" rows="3" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea></div>
+                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-300">Enviar Opinión</button>
+                    </form>
+                    <div id="reviewFormMessage" class="mt-3 text-center"></div>
+                </div>
+                 <div id="loginToReviewMessage" class="mb-8 p-4 bg-yellow-100 text-yellow-800 rounded-lg shadow text-center auth-hidden-until-ready" style="display: none;"> <p>Debes <a href="#" onclick="showSection('login', document.querySelector('#nav-login'))" class="font-medium underline hover:text-yellow-900">iniciar sesión</a> para dejar una opinión.</p>
+                </div>
+                <p class="text-gray-600 mb-4">Vea lo que otros dicen sobre nuestros servicios.</p>
+                <div id="reviewsList" class="border-t border-gray-200 pt-6 mt-6 space-y-6 loading-placeholder">
+                    </div>
+            </div>`;
+            // Añadir listeners al formulario y estrellas
+            const form = document.getElementById('reviewFormInternal');
+            if (form) {
+                form.removeEventListener('submit', handleReviewFormSubmit);
+                form.addEventListener('submit', handleReviewFormSubmit);
+            }
+            const ratingStarsEl = document.getElementById('ratingStars');
+            if (ratingStarsEl) {
+                ratingStarsEl.querySelectorAll('span').forEach(star => {
+                    const newStar = star.cloneNode(true); // Clonar para limpiar listeners viejos
+                    star.parentNode.replaceChild(newStar, star);
+                    newStar.addEventListener('click', () => {
+                        currentRating = parseInt(newStar.dataset.value);
+                        const reviewRatingInput = document.getElementById('reviewRating');
+                        if (reviewRatingInput) reviewRatingInput.value = currentRating;
+                        ratingStarsEl.querySelectorAll('span').forEach(s => {
+                            s.classList.toggle('selected', parseInt(s.dataset.value) <= currentRating);
+                        });
+                    });
+                });
+            }
+            // Actualizar visibilidad del form/mensaje según login
+            updateReviewFormVisibility();
+            loadAndRenderReviews(); // Iniciar carga de datos
+        }
+        // Función auxiliar para mostrar/ocultar form de opinión
+        function updateReviewFormVisibility() {
+            const addReviewContainer = document.getElementById('addReviewContainer');
+            const loginToReviewMessage = document.getElementById('loginToReviewMessage');
+            const reviewerNameInput = document.getElementById('reviewerName');
+            const currentUser = auth?.currentUser;
+
+            if (addReviewContainer && loginToReviewMessage) {
+                if (currentUser) {
+                    addReviewContainer.style.display = 'block';
+                    loginToReviewMessage.style.display = 'none';
+                    if (reviewerNameInput && currentUser.displayName) reviewerNameInput.value = currentUser.displayName;
+                } else {
+                    addReviewContainer.style.display = 'none';
+                    loginToReviewMessage.style.display = 'block';
+                }
+            }
+        }
+
+
+        function loadContactoHTML() {
+            const container = document.getElementById('contacto');
+            if (!container) return;
+            container.innerHTML = `
+            <div class="bg-white p-8 rounded-lg shadow-lg">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6">Contáctenos</h2>
+                <p class="text-gray-600 mb-8">Estamos aquí para ayudarle.</p>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">Información</h3>
+                        <p class="text-gray-600 mb-2 flex items-center"><i class="fas fa-map-marker-alt w-5 mr-2 text-blue-500"></i>Republica Dominicana 🇩🇴</p>
+                        <p class="text-gray-600 mb-2 flex items-center"><i class="fas fa-phone w-5 mr-2 text-blue-500"></i>Tel: +1 (829) 576-4243</p>
+                        <p class="text-gray-600 mb-2 flex items-center"><i class="fas fa-envelope w-5 mr-2 text-blue-500"></i>Email: grupotecnicosoluciones@gmail.com</p>
+                        <h3 class="text-xl font-semibold text-gray-700 mt-6 mb-3">Chatea</h3>
+                        <a href="https://wa.me/18295764243?text=Hola%2C%20estoy%20interesado%20en%20sus%20servicios." target="_blank" class="inline-flex items-center justify-center w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg shadow-sm transition duration-300 mb-3"><i class="fab fa-whatsapp w-5 h-5 mr-2"></i>WhatsApp: +1 (829) 576-4243</a>
+                        <h3 class="text-xl font-semibold text-gray-700 mt-6 mb-3">Síganos</h3>
+                        <div class="flex space-x-4"><a href="https://www.instagram.com/grupo_tecnico_soluciones/" target="_blank" class="text-pink-600 hover:text-pink-700 text-2xl"><i class="fab fa-instagram"></i></a><a href="https://www.facebook.com/profile.php?id=61574455208726" target="_blank" class="text-blue-600 hover:text-blue-700 text-2xl"><i class="fab fa-facebook"></i></a></div>
+                        <h3 class="text-xl font-semibold text-gray-700 mt-8 mb-2">Horario</h3>
+                        <p class="text-gray-600 mb-1">Lunes - Viernes: 8:00 AM - 6:00 PM</p><p class="text-gray-600">Sábados: 9:00 AM - 1:00 PM</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">Mensaje Directo</h3>
+                        <form id="contactFormInternal" class="space-y-4">
+                            <div><label for="contactName" class="block text-sm font-medium text-gray-700">Nombre</label><input type="text" id="contactName" name="contactName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                            <div><label for="contactEmail" class="block text-sm font-medium text-gray-700">Email</label><input type="email" id="contactEmail" name="contactEmail" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                            <div><label for="contactMessageText" class="block text-sm font-medium text-gray-700">Mensaje</label><textarea id="contactMessageText" name="contactMessageText" rows="4" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea></div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-300">Enviar Mensaje</button>
+                        </form>
+                        <div id="contactFormMessage" class="mt-4 text-center"></div>
+                    </div>
+                </div>
+            </div>`;
+            // Añadir listener al formulario
+            const form = document.getElementById('contactFormInternal');
+            if (form) {
+                form.removeEventListener('submit', handleContactFormSubmit);
+                form.addEventListener('submit', handleContactFormSubmit);
+            }
+        }
+
+        function loadLoginHTML() {
+            const container = document.getElementById('login');
+            if (!container) return;
+            container.innerHTML = `
+            <div class="bg-white p-8 rounded-lg shadow-lg max-w-md mx-auto">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Acceder / Registrarse</h2>
+                <div class="mb-4 border-b border-gray-200">
+                    <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="authTabsInternal" role="tablist">
+                        <li class="mr-2" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg" id="login-tab" data-tabs-target="#loginFormContainer" type="button" role="tab" aria-controls="loginFormContainer" aria-selected="true">Iniciar Sesión</button></li>
+                        <li class="mr-2" role="presentation"><button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300" id="register-tab" data-tabs-target="#registerFormContainer" type="button" role="tab" aria-controls="registerFormContainer" aria-selected="false">Registrarse</button></li>
+                    </ul>
+                </div>
+                <div id="loginFormContainer" role="tabpanel" aria-labelledby="login-tab">
+                    <form id="loginFormInternal" class="space-y-6">
+                        <div><label for="loginEmail" class="block text-sm font-medium text-gray-700">Email</label><input type="email" id="loginEmail" name="loginEmail" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                        <div><label for="loginPassword" class="block text-sm font-medium text-gray-700">Contraseña</label><input type="password" id="loginPassword" name="loginPassword" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-300">Iniciar Sesión</button>
+                        <div id="loginMessage" class="mt-4 text-center text-sm"></div>
+                    </form>
+                </div>
+                <div id="registerFormContainer" class="hidden" role="tabpanel" aria-labelledby="register-tab">
+                    <form id="registerFormInternal" class="space-y-6">
+                        <div><label for="registerName" class="block text-sm font-medium text-gray-700">Nombre Completo</label><input type="text" id="registerName" name="registerName" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                        <div><label for="registerEmail" class="block text-sm font-medium text-gray-700">Email</label><input type="email" id="registerEmail" name="registerEmail" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                        <div><label for="registerPassword" class="block text-sm font-medium text-gray-700">Contraseña (mín. 6 caracteres)</label><input type="password" id="registerPassword" name="registerPassword" required class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></div>
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm transition duration-300">Crear Cuenta</button>
+                        <div id="registerMessage" class="mt-4 text-center text-sm"></div>
+                    </form>
+                </div>
+            </div>`;
+            // Añadir listeners a los formularios y tabs
+            const loginFormEl = document.getElementById('loginFormInternal');
+            const registerFormEl = document.getElementById('registerFormInternal');
+            const loginTabEl = document.getElementById('login-tab');
+            const registerTabEl = document.getElementById('register-tab');
+            const loginFormContainerEl = document.getElementById('loginFormContainer');
+            const registerFormContainerEl = document.getElementById('registerFormContainer');
+
+            if (loginFormEl) {
+                loginFormEl.removeEventListener('submit', handleLoginFormSubmit);
+                loginFormEl.addEventListener('submit', handleLoginFormSubmit);
+            }
+            if (registerFormEl) {
+                registerFormEl.removeEventListener('submit', handleRegisterFormSubmit);
+                registerFormEl.addEventListener('submit', handleRegisterFormSubmit);
+            }
+            if (loginTabEl && registerTabEl && loginFormContainerEl && registerFormContainerEl) {
+                loginTabEl.addEventListener('click', () => switchAuthTab(loginTabEl, registerTabEl, loginFormContainerEl, registerFormContainerEl));
+                registerTabEl.addEventListener('click', () => switchAuthTab(registerTabEl, loginTabEl, registerFormContainerEl, loginFormContainerEl));
+                loginTabEl.click(); // Activar login por defecto
+            }
+        }
+
+        function loadAdminAppointmentsHTML() {
+            const container = document.getElementById('adminAppointments');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="bg-white p-8 rounded-lg shadow-lg">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-6">Gestionar Citas Agendadas</h2>
+                    <div id="adminAppointmentsList" class="space-y-4 loading-placeholder">
+                        </div>
+                </div>`;
+            loadAndRenderAdminAppointments(); // Cargar datos si es admin
+        }
+
+        // --- FOOTER ---
+        function loadFooterHTML() {
+            const footer = document.querySelector('footer');
+            if (!footer) return;
+            footer.innerHTML = `
+                <div class="container mx-auto">
+                    <p class="mb-2">&copy; <span id="currentYearFooter">${new Date().getFullYear()}</span> Grupo Técnico Soluciones. Todos los derechos reservados.</p>
+                    <div class="flex justify-center space-x-4 mb-2">
+                        <a href="https://www.instagram.com/grupo_tecnico_soluciones/" target="_blank" aria-label="Instagram" class="text-gray-400 hover:text-white transition-colors duration-300"><i class="fab fa-instagram fa-lg"></i></a>
+                        <a href="https://www.facebook.com/profile.php?id=61574455208726" target="_blank" aria-label="Facebook" class="text-gray-400 hover:text-white transition-colors duration-300"><i class="fab fa-facebook fa-lg"></i></a>
+                        <a href="https://wa.me/18295764243" target="_blank" aria-label="WhatsApp" class="text-gray-400 hover:text-white transition-colors duration-300"><i class="fab fa-whatsapp fa-lg"></i></a>
+                    </div>
+                    <p class="text-sm text-gray-500">Diseñado con ❤️ en República Dominicana</p>
+                </div>`;
+        }
+
+        // ========================================================================
+        // == INICIALIZACIÓN GENERAL ==
+        // ========================================================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Cargar HTML inicial y footer
+            loadFooterHTML();
+            showSection('inicio', document.querySelector('header .nav-link[onclick*="inicio"]')); // Carga el contenido de inicio
+
+            // Listeners globales para modales (que están fuera de las secciones)
+            const serviceFormEl = document.getElementById('serviceForm');
+            if (serviceFormEl) serviceFormEl.addEventListener('submit', handleServiceFormSubmit);
+
+            const newsFormEl = document.getElementById('newsForm');
+            if (newsFormEl) newsFormEl.addEventListener('submit', handleNewsFormSubmit);
+
+            const productFormEl = document.getElementById('productForm');
+            if (productFormEl) productFormEl.addEventListener('submit', handleProductFormSubmit);
+
+            // Mensaje importante si las claves no están configuradas
+            if (firebaseConfig.apiKey === "TU_API_KEY") {
+                alert("¡CONFIGURACIÓN NECESARIA! Reemplaza los valores 'TU_...' en la variable 'firebaseConfig' dentro del archivo HTML con tus propias claves de Firebase para que la aplicación funcione.");
+            }
+        });
+
+    </script>
+</body>
+
+</html>
