@@ -4,7 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grupo Técnico Soluciones - Tienda (Firebase)</title>
+    <title>GTS - Tienda</title>
+
+<!-- Manifiesto para Android y navegadores compatibles -->
+<link rel="manifest" href="manifest.json">
+<!-- Icono para iOS Home Screen -->
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<!-- Color de la barra de navegación en Android -->
+<meta name="theme-color" content="#0d6efd">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -595,15 +603,18 @@
         });
 
         function handleLogout() {
-            auth.signOut().then(() => {
-                console.log("Sesión cerrada exitosamente.");
-                // onAuthStateChanged se encargará de actualizar la UI
-                showSection('inicio', document.querySelector('header .nav-link[onclick*="inicio"]'));
-            }).catch(error => {
-                console.error("Error al cerrar sesión:", error);
-                alert("Error al cerrar sesión.");
-            });
-        }
+    auth.signOut()
+        .then(() => {
+            console.log("Sesión cerrada exitosamente.");
+            // Recarga la página para limpiar todo el estado de la SPA
+            window.location.reload();
+        })
+        .catch(error => {
+            console.error("Error al cerrar sesión:", error);
+            alert("Error al cerrar sesión.");
+        });
+}
+
 
         // Asignar logout a los botones (se hace aquí porque los botones existen desde el inicio)
         document.getElementById('nav-logout')?.addEventListener('click', handleLogout);
